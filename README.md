@@ -1,6 +1,6 @@
 # Rick & Morty GraphQL API
 
-An **Express 5 + GraphQL (Apollo Server)** API to search _Rick and Morty_ characters, powered by **Sequelize** (PostgreSQL or MySQL), database **migrations**, **initial seed**, **Redis** caching, and **Swagger UI** for browser-based testing.
+An **Express 5 + GraphQL (Apollo Server)** API to search *Rick and Morty* characters, powered by **Sequelize** (PostgreSQL or MySQL), database **migrations**, **full catalog seed/import**, **Redis** caching, and **Swagger UI** for browser-based testing.
 
 ## 🚀 Features
 
@@ -12,7 +12,7 @@ An **Express 5 + GraphQL (Apollo Server)** API to search _Rick and Morty_ charac
   - **Mutations**: `createCharacter`, `updateCharacter`, `deleteCharacter`.
 - **Relational DB** (Sequelize)
   - Migration + model `Character`.
-  - **Initial seed (15 characters)** from the public Rick & Morty API (no duplicates thanks to `apiId` uniqueness logic).
+  - **Full seed/import from the public Rick & Morty API** (all characters; dedup by `apiId`).
 - **Redis cache** (+ automatic invalidation on mutations)
   - Caches `characters`, `character`, `charactersConnection`, `filterOptions`.
 - **Request logging middleware**
@@ -34,7 +34,6 @@ cp .env.example .env
 ```
 
 Key variables to review:
-
 - **DB**: `DB_DIALECT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL`
 - **Redis**: `REDIS_URL`, `CACHE_TTL_SECONDS`
 - **Server**: `PORT`, `JSON_LIMIT`, `CORS_ORIGIN`
@@ -76,7 +75,7 @@ src/
     migrations/
       2025xxxx-create-characters.js
     seeders/
-      2025xxxx-seed-characters.js
+      2025xxxx-seed-characters-all.js   # full import from public API
   docs/
     openapi.yaml        # OpenAPI spec (Swagger)
     ERD.md              # Database ERD (Mermaid)
@@ -140,7 +139,6 @@ erDiagram
 ```
 
 **Indexes (recommended):**
-
 - B-Tree: `status`, `species`, `gender` (equality filters)
 - B-Tree: `origin`, `name` (used by substring search via `ILIKE` on Postgres)
 - Unique: `apiId` (prevents duplicate imports)
@@ -182,20 +180,30 @@ npm install
 
 ## 🗄️ Database
 
-1. Create DB & run migrations:
-
+1) Create DB & run migrations:
 ```bash
 npm run db:create
 npm run db:migrate
 ```
 
-2. Load the initial seed (15 characters from the public API):
+2) **Full import**: load **all characters** from the public API with the dedicated seeder.
+   - If you named it like `2025xxxx-seed-characters-all.js`:
+     ```bash
+     npx sequelize-cli db:seed --seed 2025xxxx-seed-characters-all.js
+     ```
+   - If you kept multiple seeders (e.g., a small sample + the full one), you can also run all:
+     ```bash
+     npm run db:seed
+     ```
+     > Order matters—ensure the **full** seeder runs last if both exist.
 
+3) Clear Redis cache (so lists reflect the new data immediately):
 ```bash
-npm run db:seed
+npm run cache:clear
 ```
 
-> The seeder avoids duplicates using `apiId`. If the public API is temporarily unavailable, re-run the seed later.
+> The **full** seeder provided wipes the `Characters` table (via `bulkDelete`) **before** inserting the complete catalog.  
+> If you prefer to **preserve** existing rows and only insert **missing** ones, remove the deletion step and ensure a **unique index on `apiId`** to avoid duplicates.
 
 ---
 
@@ -223,7 +231,6 @@ npm start
   2. Choose an **Example** from the dropdown → **Execute**.
 
 **Included Examples:**
-
 - `hello`
 - `characters` (simple: `name: "rick"`)
 - `charactersStrict` (strict AND filters — may return `[]`)
@@ -240,30 +247,19 @@ npm start
 ## 🧠 GraphQL Examples
 
 ### 1) Ping
-
 ```graphql
-query {
-  hello
-}
+query { hello }
 ```
 
 ### 2) List with filters
-
 ```graphql
 query ($filter: CharacterFilter, $limit: Int, $offset: Int) {
   characters(filter: $filter, limit: $limit, offset: $offset) {
-    id
-    name
-    status
-    species
-    gender
-    origin
+    id name status species gender origin
   }
 }
 ```
-
 Variables (simple):
-
 ```json
 { "filter": { "name": "rick" }, "limit": 5, "offset": 0 }
 ```
@@ -273,45 +269,25 @@ Variables (simple):
 > `status`/`species`/`gender` → **equality**.
 
 ### 3) Cursor-based pagination
-
 ```graphql
 query ($first: Int, $after: String) {
   charactersConnection(first: $first, after: $after) {
-    edges {
-      cursor
-      node {
-        id
-        name
-      }
-    }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
+    edges { cursor node { id name } }
+    pageInfo { endCursor hasNextPage }
     totalCount
   }
 }
 ```
-
 Variables (first page):
-
 ```json
 { "first": 5 }
 ```
 
 ### 4) Detail by ID
-
 ```graphql
 query ($id: ID!) {
   character(id: $id) {
-    id
-    name
-    status
-    species
-    gender
-    origin
-    image
-    apiId
+    id name status species gender origin image apiId
   }
 }
 ```
@@ -319,22 +295,13 @@ query ($id: ID!) {
 ### 5) Mutations
 
 **Create**
-
 ```graphql
 mutation ($input: CharacterCreateInput!) {
   createCharacter(input: $input) {
-    id
-    name
-    status
-    species
-    gender
-    origin
-    image
-    apiId
+    id name status species gender origin image apiId
   }
 }
 ```
-
 ```json
 {
   "input": {
@@ -349,22 +316,13 @@ mutation ($input: CharacterCreateInput!) {
 ```
 
 **Update**
-
 ```graphql
 mutation ($id: ID!, $input: CharacterUpdateInput!) {
   updateCharacter(id: $id, input: $input) {
-    id
-    name
-    status
-    species
-    gender
-    origin
-    image
-    apiId
+    id name status species gender origin image apiId
   }
 }
 ```
-
 ```json
 {
   "id": 2,
@@ -373,7 +331,6 @@ mutation ($id: ID!, $input: CharacterUpdateInput!) {
 ```
 
 **Delete**
-
 ```graphql
 mutation ($id: ID!) {
   deleteCharacter(id: $id)
@@ -393,7 +350,6 @@ mutation ($id: ID!) {
 - **Automatic invalidation** on `create/update/delete`:
   - Removes list/connection/filter keys and the affected detail key.
 - Manual clear:
-
 ```bash
 npm run cache:clear
 ```
@@ -421,61 +377,16 @@ npm run cache:clear
 
 ## 🧪 Troubleshooting
 
+- **Empty results after switching DB**  
+  Run migrations, execute the **full import** seeder, then `npm run cache:clear`.
 - **`[]` on `characters` with many filters**  
   Filters are **AND**. Start with just `name` to widen results.
-- **Seed not visible**  
-  Check connectivity/credentials. Re-run `npm run db:seed`.
-- **Stale cache**  
-  Run `npm run cache:clear` and retry.
 - **ESM/CJS issue with sequelize-cli**  
   We use `src/db/config.cjs` + `.sequelizerc` pointing to `src/db/*`, with `src/db/package.json` containing `"type": "commonjs"`.
 - **Redis disconnected**  
   Verify `REDIS_URL`. If your provider uses TLS, use `rediss://`. Check `/health`.
 - **Swagger not updating**  
   The UI reads `GET /docs.json`. Hard refresh (Ctrl/Cmd+Shift+R) and inspect `http://localhost:4000/docs.json`.
-
----
-
-## 🐳 (Optional) Docker Compose
-
-Basic Postgres + Redis + API example:
-
-```yaml
-version: "3.9"
-services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: rickmorty
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports: ["5432:5432"]
-    volumes: [dbdata:/var/lib/postgresql/data]
-
-  redis:
-    image: redis:7
-    ports: ["6379:6379"]
-
-  api:
-    build: .
-    environment:
-      DB_DIALECT: postgres
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: rickmorty
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      REDIS_URL: redis://redis:6379
-      PORT: 4000
-      CORS_ORIGIN: "*"
-    ports: ["4000:4000"]
-    depends_on: [db, redis]
-
-volumes:
-  dbdata:
-```
-
-> Add a `Dockerfile` and (optionally) an entrypoint that runs migrations/seed on startup.
 
 ---
 
