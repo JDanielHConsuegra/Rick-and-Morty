@@ -24,6 +24,24 @@ An **Express 5 + GraphQL (Apollo Server)** API to search *Rick and Morty* charac
 
 ---
 
+## 🔑 Environment setup (`.env` & `.env.example`)
+
+This repo includes a **`.env.example`** with all required variables. Start by copying it:
+
+```bash
+cp .env.example .env
+# then edit .env with your local or cloud credentials
+```
+
+Key variables to review:
+- **DB**: `DB_DIALECT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL`
+- **Redis**: `REDIS_URL`, `CACHE_TTL_SECONDS`
+- **Server**: `PORT`, `JSON_LIMIT`, `CORS_ORIGIN`
+
+> If your DB/Redis provider enforces TLS, use `DB_SSL=true` and `rediss://` for `REDIS_URL`.
+
+---
+
 ## 📦 Tech Stack
 
 - Node.js (ESM)
@@ -60,23 +78,19 @@ src/
       2025xxxx-seed-characters.js
   docs/
     openapi.yaml        # OpenAPI spec (Swagger)
-  index.js              # server (Express + GraphQL + Swagger + health)
+    ERD.md              # Database ERD (Mermaid)
+index.js                # server (Express + GraphQL + Swagger + health)
 .sequelizerc            # sequelize-cli paths -> src/db/*
+.env.example            # sample environment variables
 ```
 
 > Note: `src/db/index.mjs` exports `sequelize` and the models for runtime. `sequelize-cli` uses `src/db/config.cjs` (CommonJS) based on `.sequelizerc`.
 
 ---
 
-## 🔧 Requirements
+## ⚙️ Environment Variables (reference)
 
-- Node.js 18+ (20+ recommended)
-- PostgreSQL or MySQL
-- Redis (local or cloud)
-
----
-
-## ⚙️ Environment Variables (.env)
+Full list (mirrors `.env.example`):
 
 ```ini
 # ----- DB -----
@@ -100,7 +114,34 @@ JSON_LIMIT=200kb
 CORS_ORIGIN=*
 ```
 
-> Using a cloud provider that enforces TLS? Use `rediss://` for Redis and set `DB_SSL=true` for the DB.
+---
+
+## 🗺️ Database ERD
+
+A focused single-table schema optimized for the required filters. See **[`docs/ERD.md`](docs/ERD.md)** for details.
+
+Quick preview:
+
+```mermaid
+erDiagram
+  CHARACTER {
+    INT id PK
+    VARCHAR name
+    VARCHAR status
+    VARCHAR species
+    VARCHAR gender
+    VARCHAR origin
+    VARCHAR image
+    INT apiId
+    TIMESTAMP createdAt
+    TIMESTAMP updatedAt
+  }
+```
+
+**Indexes (recommended):**
+- B-Tree: `status`, `species`, `gender` (equality filters)
+- B-Tree: `origin`, `name` (used by substring search via `ILIKE` on Postgres)
+- Unique: `apiId` (prevents duplicate imports)
 
 ---
 
