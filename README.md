@@ -1,6 +1,6 @@
 # Rick & Morty GraphQL API
 
-An **Express 5 + GraphQL (Apollo Server)** API to search *Rick and Morty* characters, powered by **Sequelize** (PostgreSQL or MySQL), database **migrations**, **initial seed**, **Redis** caching, and **Swagger UI** for browser-based testing.
+An **Express 5 + GraphQL (Apollo Server)** API to search _Rick and Morty_ characters, powered by **Sequelize** (PostgreSQL or MySQL), database **migrations**, **initial seed**, **Redis** caching, and **Swagger UI** for browser-based testing.
 
 ## 🚀 Features
 
@@ -34,6 +34,7 @@ cp .env.example .env
 ```
 
 Key variables to review:
+
 - **DB**: `DB_DIALECT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL`
 - **Redis**: `REDIS_URL`, `CACHE_TTL_SECONDS`
 - **Server**: `PORT`, `JSON_LIMIT`, `CORS_ORIGIN`
@@ -118,7 +119,7 @@ CORS_ORIGIN=*
 
 ## 🗺️ Database ERD
 
-A focused single-table schema optimized for the required filters. See **[`docs/ERD.md`](docs/ERD.md)** for details.
+A focused single-table schema optimized for the required filters. See **[`src/docs/ERD.md`](src/docs/ERD.md)** for details.
 
 Quick preview:
 
@@ -139,6 +140,7 @@ erDiagram
 ```
 
 **Indexes (recommended):**
+
 - B-Tree: `status`, `species`, `gender` (equality filters)
 - B-Tree: `origin`, `name` (used by substring search via `ILIKE` on Postgres)
 - Unique: `apiId` (prevents duplicate imports)
@@ -180,13 +182,15 @@ npm install
 
 ## 🗄️ Database
 
-1) Create DB & run migrations:
+1. Create DB & run migrations:
+
 ```bash
 npm run db:create
 npm run db:migrate
 ```
 
-2) Load the initial seed (15 characters from the public API):
+2. Load the initial seed (15 characters from the public API):
+
 ```bash
 npm run db:seed
 ```
@@ -219,6 +223,7 @@ npm start
   2. Choose an **Example** from the dropdown → **Execute**.
 
 **Included Examples:**
+
 - `hello`
 - `characters` (simple: `name: "rick"`)
 - `charactersStrict` (strict AND filters — may return `[]`)
@@ -235,19 +240,30 @@ npm start
 ## 🧠 GraphQL Examples
 
 ### 1) Ping
+
 ```graphql
-query { hello }
+query {
+  hello
+}
 ```
 
 ### 2) List with filters
+
 ```graphql
 query ($filter: CharacterFilter, $limit: Int, $offset: Int) {
   characters(filter: $filter, limit: $limit, offset: $offset) {
-    id name status species gender origin
+    id
+    name
+    status
+    species
+    gender
+    origin
   }
 }
 ```
+
 Variables (simple):
+
 ```json
 { "filter": { "name": "rick" }, "limit": 5, "offset": 0 }
 ```
@@ -257,25 +273,45 @@ Variables (simple):
 > `status`/`species`/`gender` → **equality**.
 
 ### 3) Cursor-based pagination
+
 ```graphql
 query ($first: Int, $after: String) {
   charactersConnection(first: $first, after: $after) {
-    edges { cursor node { id name } }
-    pageInfo { endCursor hasNextPage }
+    edges {
+      cursor
+      node {
+        id
+        name
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
     totalCount
   }
 }
 ```
+
 Variables (first page):
+
 ```json
 { "first": 5 }
 ```
 
 ### 4) Detail by ID
+
 ```graphql
 query ($id: ID!) {
   character(id: $id) {
-    id name status species gender origin image apiId
+    id
+    name
+    status
+    species
+    gender
+    origin
+    image
+    apiId
   }
 }
 ```
@@ -283,13 +319,22 @@ query ($id: ID!) {
 ### 5) Mutations
 
 **Create**
+
 ```graphql
 mutation ($input: CharacterCreateInput!) {
   createCharacter(input: $input) {
-    id name status species gender origin image apiId
+    id
+    name
+    status
+    species
+    gender
+    origin
+    image
+    apiId
   }
 }
 ```
+
 ```json
 {
   "input": {
@@ -304,13 +349,22 @@ mutation ($input: CharacterCreateInput!) {
 ```
 
 **Update**
+
 ```graphql
 mutation ($id: ID!, $input: CharacterUpdateInput!) {
   updateCharacter(id: $id, input: $input) {
-    id name status species gender origin image apiId
+    id
+    name
+    status
+    species
+    gender
+    origin
+    image
+    apiId
   }
 }
 ```
+
 ```json
 {
   "id": 2,
@@ -319,6 +373,7 @@ mutation ($id: ID!, $input: CharacterUpdateInput!) {
 ```
 
 **Delete**
+
 ```graphql
 mutation ($id: ID!) {
   deleteCharacter(id: $id)
@@ -338,6 +393,7 @@ mutation ($id: ID!) {
 - **Automatic invalidation** on `create/update/delete`:
   - Removes list/connection/filter keys and the affected detail key.
 - Manual clear:
+
 ```bash
 npm run cache:clear
 ```
