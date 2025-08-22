@@ -7,6 +7,10 @@ info:
     - **/graphql**: endpoint GraphQL (POST) — usa body con `query`, `variables`, `operationName`.
     - **/health**: endpoint REST de salud.
 
+    **Notas sobre filtros (Query `characters` / `charactersConnection`):**
+    - Los filtros se combinan con **AND**.
+    - `name` y `origin` hacen coincidencia parcial (contiene), insensible a mayúsculas/minúsculas (PostgreSQL iLIKE).
+    - `status`, `species` y `gender` comparan por **igualdad**.
 servers:
   - url: http://localhost:4000
     description: Local
@@ -34,7 +38,25 @@ paths:
                 value:
                   query: "query { hello }"
               characters:
-                summary: Lista con filtros
+                summary: Lista con filtros (simple, asegura resultados)
+                value:
+                  query: |
+                    query($filter: CharacterFilter, $limit: Int, $offset: Int){
+                      characters(filter: $filter, limit: $limit, offset: $offset){
+                        id name status species gender origin
+                      }
+                    }
+                  variables:
+                    filter:
+                      name: "rick"   # solo name para evitar resultados vacíos
+                    limit: 5
+                    offset: 0
+              charactersStrict:
+                summary: Lista con filtros (estrictos: AND)
+                description: >
+                  Usa AND entre todos los campos. Si tu base no contiene exactamente
+                  a "Rick Sanchez" (Alive, Human, Male, origin contiene "Earth"),
+                  el resultado será [] (esperado).
                 value:
                   query: |
                     query($filter: CharacterFilter, $limit: Int, $offset: Int){
