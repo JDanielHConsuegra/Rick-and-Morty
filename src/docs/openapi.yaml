@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: Rick & Morty GraphQL API (Swagger helper)
+  version: 1.0.0
+  description: |
+    Documentación para consumir la API.
+    - **/graphql**: endpoint GraphQL (POST) — usa body con `query`, `variables`, `operationName`.
+    - **/health**: endpoint REST de salud.
+
+servers:
+  - url: http://localhost:4000
+    description: Local
+
+tags:
+  - name: GraphQL
+    description: Interacción con el endpoint /graphql
+  - name: Health
+    description: Estado de la aplicación
+
+paths:
+  /graphql:
+    post:
+      tags: [GraphQL]
+      summary: Ejecuta una operación GraphQL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GraphQLRequest"
+            examples:
+              hello:
+                summary: Hello
+                value:
+                  query: "query { hello }"
+              characters:
+                summary: Lista con filtros
+                value:
+                  query: |
+                    query($filter: CharacterFilter, $limit: Int, $offset: Int){
+                      characters(filter: $filter, limit: $limit, offset: $offset){
+                        id name status species gender origin
+                      }
+                    }
+                  variables:
+                    filter:
+                      name: "rick"
+                      origin: "earth"
+                      status: "Alive"
+                      species: "Human"
+                      gender: "Male"
+                    limit: 5
+                    offset: 0
+              charactersConnection:
+                summary: Paginación por cursores
+                value:
+                  query: |
+                    query($first: Int, $after: String){
+                      charactersConnection(first: $first, after: $after){
+                        edges { cursor node { id name } }
+                        pageInfo { endCursor hasNextPage }
+                        totalCount
+                      }
+                    }
+                  variables:
+                    first: 5
+      responses:
+        "200":
+          description: Respuesta GraphQL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphQLResponse"
+              examples:
+                ok:
+                  summary: Ejemplo "hello"
+                  value:
+                    data:
+                      hello: "Hola Rick & Morty API 🚀"
+                error:
+                  summary: Ejemplo con error
+                  value:
+                    errors:
+                      - message: "Algo falló"
+                        locations: [{ line: 1, column: 2 }]
+                        path: ["hello"]
+        "400":
+          description: Petición inválida
+  /health:
+    get:
+      tags: [Health]
+      summary: Estado del servicio
+      responses:
+        "200":
+          description: Estado básico
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  db:
+                    type: string
+                  redis:
+                    type: string
+                    nullable: true
+                  uptime:
+                    type: number
+              examples:
+                ok:
+                  value:
+                    ok: true
+                    db: connected
+                    redis: connected
+                    uptime: 12.34
+
+components:
+  schemas:
+    GraphQLRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          description: Documento GraphQL (query/mutation/subscription)
+        variables:
+          type: object
+          additionalProperties: true
+          nullable: true
+        operationName:
+          type: string
+          nullable: true
+      required: [query]
+    GraphQLResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          description: Resultado de los resolvers (shape dinámico según tu schema)
+          additionalProperties: true
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphQLError"
+      example:
+        data:
+          hello: "Hola Rick & Morty API 🚀"
+    GraphQLError:
+      type: object
+      properties:
+        message:
+          type: string
+        locations:
+          type: array
+          items:
+            type: object
+            properties:
+              line: { type: integer }
+              column: { type: integer }
+        path:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
