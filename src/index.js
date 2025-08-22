@@ -69,13 +69,26 @@ async function startServer() {
   // Logger
   app.use(requestLogger);
 
-  // 🔎 Swagger UI en /docs
+  // 🔎 Swagger UI (carga del YAML en caliente)
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const swaggerDocument = YAML.load(
-    path.join(__dirname, "docs", "openapi.yaml")
+
+  // Sirve siempre la versión actual del YAML (evita reinicios para ver nuevos examples)
+  app.get("/docs.json", (_req, res) => {
+    const spec = YAML.load(path.join(__dirname, "docs", "openapi.yaml"));
+    res.setHeader("Cache-Control", "no-store");
+    res.json(spec);
+  });
+
+  // UI que consume la spec desde /docs.json
+  app.use(
+    "/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(null, {
+      swaggerOptions: { url: "/docs.json" },
+      customSiteTitle: "Rick & Morty GraphQL — Docs",
+    })
   );
-  app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   // Apollo Server
   const server = new ApolloServer({ typeDefs, resolvers });

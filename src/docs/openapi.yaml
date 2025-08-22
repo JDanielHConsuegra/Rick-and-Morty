@@ -37,6 +37,7 @@ paths:
                 summary: Hello
                 value:
                   query: "query { hello }"
+
               characters:
                 summary: Lista con filtros (simple, asegura resultados)
                 value:
@@ -51,6 +52,7 @@ paths:
                       name: "rick"   # solo name para evitar resultados vacíos
                     limit: 5
                     offset: 0
+
               charactersStrict:
                 summary: Lista con filtros (estrictos: AND)
                 description: >
@@ -73,6 +75,18 @@ paths:
                       gender: "Male"
                     limit: 5
                     offset: 0
+
+              charactersAll:
+                summary: Todos los personajes (sin filtros, hasta 100)
+                description: Devuelve todos los registros actuales sin filtros aplicando `limit: 100`.
+                value:
+                  query: |
+                    {
+                      characters(limit: 100, offset: 0) {
+                        id name status species gender origin
+                      }
+                    }
+
               charactersConnection:
                 summary: Paginación por cursores
                 value:
@@ -86,6 +100,74 @@ paths:
                     }
                   variables:
                     first: 5
+
+              filterOptions:
+                summary: Valores únicos para filtros
+                value:
+                  query: |
+                    query {
+                      filterOptions {
+                        statuses
+                        species
+                        genders
+                        origins
+                      }
+                    }
+
+              characterById:
+                summary: Detalle por ID
+                value:
+                  query: |
+                    query($id: ID!) {
+                      character(id: $id) {
+                        id name status species gender origin image apiId
+                      }
+                    }
+                  variables:
+                    id: 3
+
+              createCharacter:
+                summary: Crear personaje
+                value:
+                  query: |
+                    mutation($input: CharacterCreateInput!) {
+                      createCharacter(input: $input) {
+                        id name status species gender origin image apiId
+                      }
+                    }
+                  variables:
+                    input:
+                      name: "Bird Person (Custom)"
+                      status: "Alive"
+                      species: "Bird-Person"
+                      gender: "Male"
+                      origin: "Bird World"
+                      image: "https://example.com/bird.png"
+
+              updateCharacter:
+                summary: Actualizar personaje
+                value:
+                  query: |
+                    mutation($id: ID!, $input: CharacterUpdateInput!) {
+                      updateCharacter(id: $id, input: $input) {
+                        id name status species gender origin image apiId
+                      }
+                    }
+                  variables:
+                    id: 2
+                    input:
+                      origin: "Earth (C-137)"
+
+              deleteCharacter:
+                summary: Eliminar personaje
+                value:
+                  query: |
+                    mutation($id: ID!) {
+                      deleteCharacter(id: $id)
+                    }
+                  variables:
+                    id: 16
+
       responses:
         "200":
           description: Respuesta GraphQL
@@ -108,6 +190,7 @@ paths:
                         path: ["hello"]
         "400":
           description: Petición inválida
+
   /health:
     get:
       tags: [Health]
