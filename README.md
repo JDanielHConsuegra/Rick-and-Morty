@@ -19,7 +19,7 @@ Rick-and-Morty/
 
   > Inside the backend README you will find:
   >
-  > - The **ERD diagram**: [`backend/rickmorty-graphql-api/docs/ERD.md`](backend/rickmorty-graphql-api/docs/ERD.md)
+  > - The **ERD diagram**: [`backend/rickmorty-graphql-api/src/docs/ERD.md`](backend/rickmorty-graphql-api/src/docs/ERD.md)
   > - **Swagger/OpenAPI** documentation:
   >   - **Swagger UI (when the server is running):** `http://localhost:4000/docs`
   >   - **OpenAPI YAML in repo:** [`backend/rickmorty-graphql-api/src/docs/openapi.yaml`](backend/rickmorty-graphql-api/src/docs/openapi.yaml)
