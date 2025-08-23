@@ -1,0 +1,270 @@
+openapi: 3.0.3
+info:
+  title: Rick & Morty GraphQL API (Swagger helper)
+  version: 1.0.0
+  description: |
+    Documentación para consumir la API.
+    - **/graphql**: endpoint GraphQL (POST) — usa body con `query`, `variables`, `operationName`.
+    - **/health**: endpoint REST de salud.
+
+    **Notas sobre filtros (Query `characters` / `charactersConnection`):**
+    - Los filtros se combinan con **AND**.
+    - `name` y `origin` hacen coincidencia parcial (contiene), insensible a mayúsculas/minúsculas (PostgreSQL iLIKE).
+    - `status`, `species` y `gender` comparan por **igualdad**.
+servers:
+  - url: http://localhost:4000
+    description: Local
+
+tags:
+  - name: GraphQL
+    description: Interacción con el endpoint /graphql
+  - name: Health
+    description: Estado de la aplicación
+
+paths:
+  /graphql:
+    post:
+      tags: [GraphQL]
+      summary: Ejecuta una operación GraphQL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GraphQLRequest"
+            examples:
+              hello:
+                summary: Hello
+                value:
+                  query: "query { hello }"
+
+              characters:
+                summary: Lista con filtros (simple, asegura resultados)
+                value:
+                  query: |
+                    query($filter: CharacterFilter, $limit: Int, $offset: Int){
+                      characters(filter: $filter, limit: $limit, offset: $offset){
+                        id name status species gender origin
+                      }
+                    }
+                  variables:
+                    filter:
+                      name: "rick"   # solo name para evitar resultados vacíos
+                    limit: 5
+                    offset: 0
+
+              charactersStrict:
+                summary: Lista con filtros (estrictos: AND)
+                description: >
+                  Usa AND entre todos los campos. Si tu base no contiene exactamente
+                  a "Rick Sanchez" (Alive, Human, Male, origin contiene "Earth"),
+                  el resultado será [] (esperado).
+                value:
+                  query: |
+                    query($filter: CharacterFilter, $limit: Int, $offset: Int){
+                      characters(filter: $filter, limit: $limit, offset: $offset){
+                        id name status species gender origin
+                      }
+                    }
+                  variables:
+                    filter:
+                      name: "rick"
+                      origin: "earth"
+                      status: "Alive"
+                      species: "Human"
+                      gender: "Male"
+                    limit: 5
+                    offset: 0
+
+              charactersAll:
+                summary: Todos los personajes (sin filtros, hasta 100)
+                description: Devuelve todos los registros actuales sin filtros aplicando `limit: 100`.
+                value:
+                  query: |
+                    {
+                      characters(limit: 100, offset: 0) {
+                        id name status species gender origin
+                      }
+                    }
+
+              charactersConnection:
+                summary: Paginación por cursores
+                value:
+                  query: |
+                    query($first: Int, $after: String){
+                      charactersConnection(first: $first, after: $after){
+                        edges { cursor node { id name } }
+                        pageInfo { endCursor hasNextPage }
+                        totalCount
+                      }
+                    }
+                  variables:
+                    first: 5
+
+              filterOptions:
+                summary: Valores únicos para filtros
+                value:
+                  query: |
+                    query {
+                      filterOptions {
+                        statuses
+                        species
+                        genders
+                        origins
+                      }
+                    }
+
+              characterById:
+                summary: Detalle por ID
+                value:
+                  query: |
+                    query($id: ID!) {
+                      character(id: $id) {
+                        id name status species gender origin image apiId
+                      }
+                    }
+                  variables:
+                    id: 3
+
+              createCharacter:
+                summary: Crear personaje
+                value:
+                  query: |
+                    mutation($input: CharacterCreateInput!) {
+                      createCharacter(input: $input) {
+                        id name status species gender origin image apiId
+                      }
+                    }
+                  variables:
+                    input:
+                      name: "Bird Person (Custom)"
+                      status: "Alive"
+                      species: "Bird-Person"
+                      gender: "Male"
+                      origin: "Bird World"
+                      image: "https://example.com/bird.png"
+
+              updateCharacter:
+                summary: Actualizar personaje
+                value:
+                  query: |
+                    mutation($id: ID!, $input: CharacterUpdateInput!) {
+                      updateCharacter(id: $id, input: $input) {
+                        id name status species gender origin image apiId
+                      }
+                    }
+                  variables:
+                    id: 2
+                    input:
+                      origin: "Earth (C-137)"
+
+              deleteCharacter:
+                summary: Eliminar personaje
+                value:
+                  query: |
+                    mutation($id: ID!) {
+                      deleteCharacter(id: $id)
+                    }
+                  variables:
+                    id: 16
+
+      responses:
+        "200":
+          description: Respuesta GraphQL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphQLResponse"
+              examples:
+                ok:
+                  summary: Ejemplo "hello"
+                  value:
+                    data:
+                      hello: "Hola Rick & Morty API 🚀"
+                error:
+                  summary: Ejemplo con error
+                  value:
+                    errors:
+                      - message: "Algo falló"
+                        locations: [{ line: 1, column: 2 }]
+                        path: ["hello"]
+        "400":
+          description: Petición inválida
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Estado del servicio
+      responses:
+        "200":
+          description: Estado básico
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  db:
+                    type: string
+                  redis:
+                    type: string
+                    nullable: true
+                  uptime:
+                    type: number
+              examples:
+                ok:
+                  value:
+                    ok: true
+                    db: connected
+                    redis: connected
+                    uptime: 12.34
+
+components:
+  schemas:
+    GraphQLRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          description: Documento GraphQL (query/mutation/subscription)
+        variables:
+          type: object
+          additionalProperties: true
+          nullable: true
+        operationName:
+          type: string
+          nullable: true
+      required: [query]
+    GraphQLResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          description: Resultado de los resolvers (shape dinámico según tu schema)
+          additionalProperties: true
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphQLError"
+      example:
+        data:
+          hello: "Hola Rick & Morty API 🚀"
+    GraphQLError:
+      type: object
+      properties:
+        message:
+          type: string
+        locations:
+          type: array
+          items:
+            type: object
+            properties:
+              line: { type: integer }
+              column: { type: integer }
+        path:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
