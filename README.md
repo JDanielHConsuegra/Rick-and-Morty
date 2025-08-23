@@ -1,4 +1,3 @@
-
 # Rick & Morty Monorepo
 
 This repository contains the **backend (GraphQL API)** and **frontend (React 18)** for the Rick & Morty project.
@@ -19,12 +18,14 @@ Rick-and-Morty/
   [`backend/rickmorty-graphql-api/README.md`](backend/rickmorty-graphql-api/README.md)
 
   > Inside the backend README you will find:
-  > - The **ERD diagram**: [`backend/rickmorty-graphql-api/ERD.md`](backend/rickmorty-graphql-api/ERD.md)  
+  >
+  > - The **ERD diagram**: [`backend/rickmorty-graphql-api/docs/ERD.md`](backend/rickmorty-graphql-api/docs/ERD.md)
   > - **Swagger/OpenAPI** documentation:
   >   - **Swagger UI (when the server is running):** `http://localhost:4000/docs`
   >   - **OpenAPI YAML in repo:** [`backend/rickmorty-graphql-api/src/docs/openapi.yaml`](backend/rickmorty-graphql-api/src/docs/openapi.yaml)
 
 ### 🔗 Useful local endpoints (backend)
+
 - GraphQL: `http://localhost:4000/graphql`
 - Swagger UI: `http://localhost:4000/docs`
 - Health: `http://localhost:4000/health`
