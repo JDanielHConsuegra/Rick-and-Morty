@@ -12,7 +12,7 @@ export default function CharacterCard({ c }) {
   return (
     <Link
       to={`/character/${c.id}`}
-      className="group relative block w-64 overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative block w-40 lg:w-60 overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg"
     >
       {/* Favorito */}
       {fav && (

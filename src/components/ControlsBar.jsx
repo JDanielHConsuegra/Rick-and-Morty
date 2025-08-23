@@ -1,239 +1,259 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+// eslint-disable-next-line no-unused-vars
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  FiChevronDown,
+  FiChevronUp,
+  FiCheck,
   FiSearch,
-  FiFilter,
-  FiSliders,
-  FiUser,
-  FiActivity,
-  FiGlobe,
+  FiStar,
+  FiX,
 } from "react-icons/fi";
-import { BiSortAZ, BiSortZA } from "react-icons/bi";
-import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 
 /**
- * Props:
- * - search, onSearchChange
- * - onlyFavs, onOnlyFavsChange
- * - sortOrder, onSortOrderChange ("asc" | "desc")
- * - status, onStatusChange
- * - species, onSpeciesChange
- * - gender, onGenderChange
- * - options: { statuses: string[], species: string[], genders: string[] }
+ * Toggle "Only favorites" (switch compacto)
  */
+function FavSwitch({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`
+        inline-flex items-center gap-2 rounded-lg border px-3 py-2
+        text-xs sm:text-sm transition
+        ${
+          checked
+            ? "border-amber-300 bg-amber-50 text-amber-700"
+            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+        }
+      `}
+      aria-pressed={checked}
+      title="Show only favorites"
+    >
+      <FiStar className={checked ? "fill-amber-500 text-amber-500" : ""} />
+      <span>Only favorites</span>
+    </button>
+  );
+}
+
+/**
+ * InlineSelect con animación suave (altura auto + opacidad)
+ * - Renderiza opciones en el flujo normal del documento (sin overlay), con transición.
+ * - value: string (o "")
+ * - onChange: (v) => void
+ * - options: [{ label, value }]
+ * - title: etiqueta del control
+ * - allowClear: si true, muestra botón para limpiar selección
+ */
+function InlineSelect({ value, onChange, options, title, allowClear = true }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  const current = useMemo(
+    () => options.find((o) => o.value === value) || null,
+    [options, value]
+  );
+
+  // Cerrar al hacer click fuera
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  const clear = () => onChange("");
+
+  return (
+    <div ref={wrapRef} className="w-full">
+      {/* Encabezado del control */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-slate-600 sm:text-sm">
+          {title}
+        </span>
+        <div className="flex items-center gap-1">
+          {allowClear && value !== "" && (
+            <button
+              type="button"
+              onClick={clear}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] sm:text-xs text-slate-600 hover:bg-slate-100"
+              title="Clear"
+              aria-label={`Clear ${title}`}
+            >
+              <FiX /> Clear
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50"
+            title={open ? "Collapse" : "Expand"}
+          >
+            <span className="truncate max-w-[9rem] sm:max-w-[12rem]">
+              {current?.label || "Any"}
+            </span>
+            {open ? <FiChevronUp /> : <FiChevronDown />}
+          </button>
+        </div>
+      </div>
+
+      {/* Opciones en flujo normal con transición suave */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="inline-options"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2">
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-4">
+                {options.map((opt) => {
+                  const selected = opt.value === value;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      onClick={() => {
+                        onChange(opt.value);
+                        setOpen(false);
+                      }}
+                      className={`
+                        group flex items-center justify-between gap-2 rounded-md border px-2 py-1.5
+                        text-[11px] sm:text-xs transition
+                        ${
+                          selected
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }
+                      `}
+                      title={opt.label}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {selected && <FiCheck className="shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function ControlsBar({
+  // búsqueda + orden
   search,
   onSearchChange,
-  onlyFavs,
-  onOnlyFavsChange,
   sortOrder,
   onSortOrderChange,
+  // favoritos
+  onlyFavs,
+  onOnlyFavsChange,
+  // filtros
   status,
   onStatusChange,
   species,
   onSpeciesChange,
   gender,
   onGenderChange,
+  // opciones únicas del backend (para poblar Selects)
   options = { statuses: [], species: [], genders: [] },
 }) {
+  // Normaliza opciones y añade "Any"
+  const statusOptions = useMemo(
+    () =>
+      [{ label: "Any status", value: "" }].concat(
+        (options.statuses || []).map((s) => ({ label: s, value: s }))
+      ),
+    [options.statuses]
+  );
+  const speciesOptions = useMemo(
+    () =>
+      [{ label: "Any species", value: "" }].concat(
+        (options.species || []).map((s) => ({ label: s, value: s }))
+      ),
+    [options.species]
+  );
+  const genderOptions = useMemo(
+    () =>
+      [{ label: "Any gender", value: "" }].concat(
+        (options.genders || []).map((g) => ({ label: g, value: g }))
+      ),
+    [options.genders]
+  );
+  const sortOptions = useMemo(
+    () => [
+      { label: "A → Z", value: "asc" },
+      { label: "Z → A", value: "desc" },
+    ],
+    []
+  );
+
   return (
-    <div className="w-full rounded-2xl border bg-white/80 p-4 backdrop-blur">
-      {/* Grid principal: izquierda (search + favorites), derecha (sort + filtros) */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-        {/* IZQUIERDA: Search + Favorites (stacked y alineados) */}
-        <div className="md:col-span-5">
-          <div className="flex flex-col gap-3">
-            {/* Search */}
-            <div>
-              <label
-                htmlFor="search"
-                className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-600"
-              >
-                <FiSearch className="opacity-80" />
-                Search characters by name
-              </label>
-              <div className="relative">
-                <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
-                <input
-                  id="search"
-                  type="text"
-                  value={search}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                  placeholder="e.g., Rick"
-                  className="w-full rounded-xl border bg-white/90 pl-9 pr-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                  aria-label="Search characters by name"
-                />
-              </div>
-            </div>
-
-            {/* Show only favorites (nuevo diseño, debajo del search) */}
-            <div className="w-full">
-              {/* Checkbox accesible (asociado al label) */}
-              <input
-                id="onlyFavs"
-                type="checkbox"
-                checked={onlyFavs}
-                onChange={(e) => onOnlyFavsChange?.(e.target.checked)}
-                className="peer sr-only"
-                aria-label="Show only favorites"
-              />
-              {/* Label estilizado como pill + switch */}
-              <label
-                htmlFor="onlyFavs"
-                className={`
-                  inline-flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-xs font-medium shadow-sm transition
-                  ${
-                    onlyFavs
-                      ? "border-amber-300 bg-gradient-to-r from-amber-50 to-rose-50 text-amber-700"
-                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                  }
-                `}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    className={`inline-flex items-center justify-center rounded-full p-1 text-base transition ${
-                      onlyFavs ? "text-amber-600" : "text-slate-500"
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {onlyFavs ? <AiFillHeart /> : <AiOutlineHeart />}
-                  </span>
-                  {/* Texto que usan tus tests */}
-                  <span className="whitespace-nowrap">Show only favorites</span>
-                </span>
-
-                {/* Toggle visual */}
-                <span
-                  className={`
-                    relative inline-grid h-5 w-9 place-items-center rounded-full border transition
-                    ${
-                      onlyFavs
-                        ? "border-amber-300 bg-amber-100"
-                        : "border-slate-300 bg-slate-100"
-                    }
-                  `}
-                  aria-hidden="true"
-                >
-                  <span
-                    className={`
-                      absolute left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200
-                      ${onlyFavs ? "translate-x-4" : "translate-x-0"}
-                    `}
-                  />
-                </span>
-              </label>
-            </div>
-          </div>
+    <div
+      className="
+        rounded-xl border border-slate-200 bg-white/80 backdrop-blur
+        p-3 sm:p-4 shadow-sm
+      "
+    >
+      {/* Bloque superior: búsqueda + favoritos (en columna en mobile) */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        {/* Search */}
+        <div className="relative w-full sm:max-w-sm">
+          <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-60" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            placeholder="Search characters by name"
+            className="
+              w-full rounded-lg border border-slate-300 bg-white
+              pl-9 pr-3 py-2 text-xs sm:text-sm
+              placeholder:text-slate-400
+              focus:outline-none focus:ring-2 focus:ring-emerald-200
+            "
+          />
         </div>
 
-        {/* DERECHA: Sort + Filtros */}
-        <div className="md:col-span-7">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-            {/* Sort */}
-            <div className="sm:col-span-1">
-              <label
-                htmlFor="sort"
-                className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-600"
-              >
-                <FiSliders className="opacity-80" />
-                Sort by name
-              </label>
-              <div className="relative">
-                <select
-                  id="sort"
-                  value={sortOrder}
-                  onChange={(e) => onSortOrderChange?.(e.target.value)}
-                  className="w-full appearance-none rounded-xl border bg-white/90 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                  aria-label="Sort by name"
-                >
-                  <option value="asc">A–Z</option>
-                  <option value="desc">Z–A</option>
-                </select>
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
-                  {sortOrder === "asc" ? <BiSortAZ /> : <BiSortZA />}
-                </span>
-              </div>
-            </div>
+        {/* Only favorites */}
+        <FavSwitch checked={onlyFavs} onChange={onOnlyFavsChange} />
+      </div>
 
-            {/* Status */}
-            <div className="sm:col-span-1">
-              <label
-                htmlFor="status"
-                className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-600"
-              >
-                <FiActivity className="opacity-80" />
-                Filter by status
-              </label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => onStatusChange?.(e.target.value)}
-                className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                aria-label="Filter by status"
-              >
-                <option value="">All</option>
-                {options.statuses?.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Species */}
-            <div className="sm:col-span-1">
-              <label
-                htmlFor="species"
-                className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-600"
-              >
-                <FiUser className="opacity-80" />
-                Filter by species
-              </label>
-              <select
-                id="species"
-                value={species}
-                onChange={(e) => onSpeciesChange?.(e.target.value)}
-                className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                aria-label="Filter by species"
-              >
-                <option value="">All</option>
-                {options.species?.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Gender */}
-            <div className="sm:col-span-1">
-              <label
-                htmlFor="gender"
-                className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-600"
-              >
-                <FiGlobe className="opacity-80" />
-                Filter by gender
-              </label>
-              <select
-                id="gender"
-                value={gender}
-                onChange={(e) => onGenderChange?.(e.target.value)}
-                className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                aria-label="Filter by gender"
-              >
-                <option value="">All</option>
-                {options.genders?.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Línea visual sutil */}
-          <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-            <FiFilter /> Filters apply with AND logic.
-          </div>
-        </div>
+      {/* Bloque inferior: selects en línea (se expanden en el flujo con animación) */}
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <InlineSelect
+          value={sortOrder}
+          onChange={onSortOrderChange}
+          options={sortOptions}
+          title="Sort by name"
+          allowClear={false}
+        />
+        <InlineSelect
+          value={status}
+          onChange={onStatusChange}
+          options={statusOptions}
+          title="Status"
+        />
+        <InlineSelect
+          value={species}
+          onChange={onSpeciesChange}
+          options={speciesOptions}
+          title="Species"
+        />
+        <InlineSelect
+          value={gender}
+          onChange={onGenderChange}
+          options={genderOptions}
+          title="Gender"
+        />
       </div>
     </div>
   );

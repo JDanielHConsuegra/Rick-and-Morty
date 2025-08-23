@@ -11,12 +11,12 @@ html, body, #root {
 }
 
 body {
-  /* fondo suave para que paneles blancos destaquen */
+  /* fondo con mayor contraste para destacar paneles blancos */
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(148, 163, 184, .15), transparent 60%),
-    radial-gradient(800px 400px at 90% 0%, rgba(148, 163, 184, .12), transparent 55%),
-    #e5ecf3; /* slate-50 */
-  color: #0f172a; /* slate-900 */
+    radial-gradient(1200px 600px at 10% -10%, rgba(221, 206, 70, 0.35), transparent 20%),
+    radial-gradient(800px 400px at 90% 0%, rgba(47, 55, 66, 0.25), transparent 75%),
+    #cbd5e1; /* slate-200 */
+  color: #0a0a0a; /* casi negro para mejor contraste */
 }
 
 /* Selección de texto */

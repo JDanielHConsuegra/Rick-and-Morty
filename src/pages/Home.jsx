@@ -5,18 +5,12 @@ import CharacterCard from "../components/CharacterCard";
 import ControlsBar from "../components/ControlsBar.jsx";
 import { useFavorites } from "../context/useFavorites.js";
 import { Loading } from "../components/loading.jsx";
+// eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from "framer-motion";
-import { FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiFilter, FiX } from "react-icons/fi";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 
-function norm(v) {
-  return String(v ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-// Variantes de animación para cada card
 const itemVariants = {
   hidden: { opacity: 0, y: 12, scale: 0.98 },
   show: {
@@ -33,31 +27,32 @@ const itemVariants = {
   },
 };
 
+function norm(v) {
+  return String(v ?? "")
+    .trim()
+    .toLowerCase();
+}
+
 export default function Home() {
+  // Controles UI
   const [sortOrder, setSortOrder] = useState("asc");
   const [search, setSearch] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
-
-  // filtros UI
   const [status, setStatus] = useState("");
   const [species, setSpecies] = useState("");
   const [gender, setGender] = useState("");
 
-  // favoritos
-  const { list: favList } = useFavorites();
-  const favSet = useMemo(
-    () => new Set((favList() || []).map(String)),
-    [favList]
-  );
+  // Página actual (0-based)
+  const [page, setPage] = useState(0);
 
-  // debounce de búsqueda (prefijo)
+  // Debounce del search (para no recalcular en cada tecla)
   const [debounced, setDebounced] = useState(search);
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search), 250);
     return () => clearTimeout(id);
   }, [search]);
 
-  // opciones de filtros (status/species/gender)
+  // Opciones para selects (solo UI)
   const { data: optionsData } = useQuery(GET_FILTER_OPTIONS);
   const filterOptions = optionsData?.filterOptions || {
     statuses: [],
@@ -66,181 +61,260 @@ export default function Home() {
     origins: [],
   };
 
-  // solo enviamos species y gender al backend (status lo filtramos en cliente)
-  const apiFilter = useMemo(() => {
-    const f = {};
-    if (species) f.species = species;
-    if (gender) f.gender = gender;
-    return f;
-  }, [species, gender]);
+  // Favoritos (Set barato por render)
+  const { list: favList } = useFavorites();
+  const favSet = useMemo(
+    () => new Set((favList() || []).map(String)),
+    [favList]
+  );
 
-  // variables base (offset 0 en consulta principal)
-  const variables = useMemo(() => {
-    const base = { limit: PAGE_SIZE, offset: 0 };
-    return Object.keys(apiFilter).length
-      ? { ...base, filter: apiFilter }
-      : base;
-  }, [apiFilter]);
-
-  // paginado
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-
-  // visibilidad en cliente (cuántos mostramos)
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-
-  // reset al cambiar filtros/búsqueda/solo-favs
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [debounced, status, species, gender, onlyFavs]);
-
-  // reset hasMore cuando cambian filtros del server
-  useEffect(() => {
-    setHasMore(true);
-  }, [variables]);
-
-  const { data, loading, error, fetchMore } = useQuery(GET_CHARACTERS, {
-    variables,
+  // Traemos SOLO la página actual (sin filtros en el server)
+  const { data, loading, error } = useQuery(GET_CHARACTERS, {
+    variables: { limit: PAGE_SIZE, offset: page * PAGE_SIZE },
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
 
-  // estabilizar lista base con useMemo (evita warning del linter)
-  const baseList = useMemo(() => data?.characters ?? [], [data]);
+  // Datos crudos de la página
+  const pageItems = useMemo(() => data?.characters ?? [], [data?.characters]);
 
-  // búsqueda por prefijo (cliente)
-  const byPrefix = useMemo(() => {
+  // Filtros en CLIENTE, sobre la página visible
+  const filteredSorted = useMemo(() => {
     const term = norm(debounced);
-    if (!term) return baseList;
-    return baseList.filter((c) => norm(c?.name).startsWith(term));
-  }, [baseList, debounced]);
-
-  // igualdad por status/species/gender (respaldo robusto)
-  const byFacets = useMemo(() => {
-    const wantStatus = !!status;
-    const wantSpecies = !!species;
-    const wantGender = !!gender;
-
-    if (!wantStatus && !wantSpecies && !wantGender) return byPrefix;
-
     const ns = norm(status);
     const nsp = norm(species);
     const ng = norm(gender);
 
-    return byPrefix.filter((c) => {
-      const okStatus = !wantStatus || norm(c?.status) === ns;
-      const okSpecies = !wantSpecies || norm(c?.species) === nsp;
-      const okGender = !wantGender || norm(c?.gender) === ng;
-      return okStatus && okSpecies && okGender;
-    });
-  }, [byPrefix, status, species, gender]);
+    let list = pageItems;
 
-  // solo favoritos
-  const afterFavs = useMemo(() => {
-    if (!onlyFavs) return byFacets;
-    return byFacets.filter((c) => favSet.has(String(c.id)));
-  }, [byFacets, onlyFavs, favSet]);
+    // 1) starts-with por nombre
+    if (term) list = list.filter((c) => norm(c?.name).startsWith(term));
 
-  // orden
-  const sorted = useMemo(() => {
-    return [...afterFavs].sort((a, b) => {
-      const cmp = a.name.localeCompare(b.name, undefined, {
+    // 2) igualdad por facetas
+    if (ns) list = list.filter((c) => norm(c?.status) === ns);
+    if (nsp) list = list.filter((c) => norm(c?.species) === nsp);
+    if (ng) list = list.filter((c) => norm(c?.gender) === ng);
+
+    // 3) solo favoritos
+    if (onlyFavs) list = list.filter((c) => favSet.has(String(c.id)));
+
+    // 4) orden alfabético
+    return [...list].sort((a, b) => {
+      const cmp = String(a.name).localeCompare(String(b.name), undefined, {
         sensitivity: "base",
       });
       return sortOrder === "asc" ? cmp : -cmp;
     });
-  }, [afterFavs, sortOrder]);
+  }, [
+    pageItems,
+    debounced,
+    status,
+    species,
+    gender,
+    onlyFavs,
+    favSet,
+    sortOrder,
+  ]);
 
-  // mostrar solo lo visible
-  const displayList = useMemo(() => {
-    return sorted.slice(0, Math.min(visibleCount, sorted.length));
-  }, [sorted, visibleCount]);
+  // Estado de navegación
+  const hasPrev = page > 0;
+  const hasNext = pageItems.length === PAGE_SIZE;
 
-  // cargar más (si hace falta traer del servidor)
-  const onViewMore = async () => {
-    // si ya tenemos suficientes en cliente, solo incrementa visibilidad
-    if (visibleCount + PAGE_SIZE <= baseList.length) {
-      setVisibleCount((v) => v + PAGE_SIZE);
-      return;
-    }
-
-    // si no hay más del servidor, solo intenta mostrar más de lo ya filtrado
-    if (!hasMore) {
-      setVisibleCount((v) => Math.min(v + PAGE_SIZE, sorted.length));
-      return;
-    }
-
-    // traer más del servidor y luego incrementar visibilidad
-    if (loadingMore) return;
-    try {
-      setLoadingMore(true);
-      const currentCount = baseList.length;
-      const res = await fetchMore({
-        variables: {
-          ...(variables.filter ? { filter: variables.filter } : {}),
-          limit: PAGE_SIZE,
-          offset: currentCount,
-        },
-        updateQuery: (prev, { fetchMoreResult }) => {
-          if (!fetchMoreResult) return prev;
-          return {
-            ...prev,
-            characters: [
-              ...(prev.characters || []),
-              ...(fetchMoreResult.characters || []),
-            ],
-          };
-        },
-      });
-      const fetched = res?.data?.characters?.length ?? 0;
-      if (fetched < PAGE_SIZE) setHasMore(false);
-      setVisibleCount((v) => v + (fetched || PAGE_SIZE)); // asegura que mostramos lo recién traído
-    } finally {
-      setLoadingMore(false);
-    }
+  const goPrev = () => {
+    if (!hasPrev) return;
+    setPage((p) => Math.max(0, p - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const onViewLess = () => {
-    setVisibleCount((v) => Math.max(PAGE_SIZE, v - PAGE_SIZE));
+  const goNext = () => {
+    if (!hasNext) return;
+    setPage((p) => p + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // si el primer lote es menor a PAGE_SIZE, no hay más
+  // --- NUEVO: menú desplegable en mobile para ControlsBar ---
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const activeFiltersCount =
+    (search.trim() ? 1 : 0) +
+    (onlyFavs ? 1 : 0) +
+    (status ? 1 : 0) +
+    (species ? 1 : 0) +
+    (gender ? 1 : 0);
+
+  // Cierra el panel en mobile al cambiar de página (opcional)
   useEffect(() => {
-    if (!loading) {
-      const noMore = baseList.length < PAGE_SIZE;
-      if (noMore) setHasMore(false);
-    }
-  }, [loading, baseList]);
-
-  // estados de los botones
-  const canViewLess = visibleCount > PAGE_SIZE;
-  const canViewMore =
-    hasMore || // el back dice que hay más
-    visibleCount < sorted.length; // o ya hay más cargados que visibles
+    setMobileFiltersOpen(false);
+  }, [page]);
 
   return (
     <section className="min-h-screen w-full max-w-screen-xl mx-auto flex flex-col items-stretch gap-6">
       <h2 className="mt-2 text-2xl font-semibold">Characters</h2>
 
-      {/* Controles unificados */}
-      <ControlsBar
-        search={search}
-        onSearchChange={setSearch}
-        onlyFavs={onlyFavs}
-        onOnlyFavsChange={setOnlyFavs}
-        sortOrder={sortOrder}
-        onSortOrderChange={setSortOrder}
-        status={status}
-        onStatusChange={setStatus}
-        species={species}
-        onSpeciesChange={setSpecies}
-        gender={gender}
-        onGenderChange={setGender}
-        options={filterOptions}
-      />
+      {/* Botón de filtros en mobile */}
+      <div className="md:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen((v) => !v)}
+          aria-expanded={mobileFiltersOpen}
+          aria-controls="filters-panel"
+          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition
+            ${
+              mobileFiltersOpen
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          title="Show filters"
+        >
+          {mobileFiltersOpen ? <FiX /> : <FiFilter />}
+          Filters
+          {activeFiltersCount > 0 && (
+            <span className="ml-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-xs font-semibold text-white">
+              {activeFiltersCount}
+            </span>
+          )}
+        </button>
+
+        {/* Panel colapsable (1 sola instancia de ControlsBar) */}
+        <AnimatePresence initial={false}>
+          {mobileFiltersOpen && (
+            <motion.div
+              id="filters-panel"
+              key="filters-mobile"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="pt-3">
+                <ControlsBar
+                  search={search}
+                  onSearchChange={setSearch}
+                  onlyFavs={onlyFavs}
+                  onOnlyFavsChange={setOnlyFavs}
+                  sortOrder={sortOrder}
+                  onSortOrderChange={setSortOrder}
+                  status={status}
+                  onStatusChange={setStatus}
+                  species={species}
+                  onSpeciesChange={setSpecies}
+                  gender={gender}
+                  onGenderChange={setGender}
+                  options={filterOptions}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* En desktop (md+), los filtros siempre visibles (misma instancia controlada por CSS) */}
+      <div className="hidden md:block">
+        <ControlsBar
+          search={search}
+          onSearchChange={setSearch}
+          onlyFavs={onlyFavs}
+          onOnlyFavsChange={setOnlyFavs}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          status={status}
+          onStatusChange={setStatus}
+          species={species}
+          onSpeciesChange={setSpecies}
+          gender={gender}
+          onGenderChange={setGender}
+          options={filterOptions}
+        />
+      </div>
+
+      {/* Info de página y filtros */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-slate-600">
+          <span className="font-medium">Page:</span> {page + 1}
+          {" • "}
+          Showing <span className="font-semibold">
+            {filteredSorted.length}
+          </span>{" "}
+          of {pageItems.length} on this page
+          {debounced.trim() && (
+            <>
+              {" "}
+              — starting with “
+              <span className="font-mono">{debounced.trim()}</span>”
+            </>
+          )}
+          {(status || species || gender) && (
+            <>
+              {" "}
+              — filters [
+              {status && (
+                <span>
+                  Status: <b>{status}</b>
+                </span>
+              )}
+              {status && (species || gender) && " | "}
+              {species && (
+                <span>
+                  Species: <b>{species}</b>
+                </span>
+              )}
+              {species && gender && " | "}
+              {gender && (
+                <span>
+                  Gender: <b>{gender}</b>
+                </span>
+              )}
+              ]
+            </>
+          )}
+          {onlyFavs && " — only favorites"}
+          <span className="block text-xs text-slate-400">
+            (Filters apply only to the current page)
+          </span>
+        </p>
+
+        {/* Paginación */}
+        <div className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={!hasPrev || loading}
+            className={`rounded-full border px-3 py-2 text-sm font-medium transition
+              ${
+                hasPrev && !loading
+                  ? "border-slate-700 border-2 cursor-pointer hover:shadow-2xl bg-white text-slate-700 hover:bg-slate-50"
+                  : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+              }`}
+            aria-label="Previous page"
+            title="Previous page"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FiChevronLeft /> Prev
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!hasNext || loading}
+            className={`rounded-full border px-3 py-2 text-sm font-medium transition
+              ${
+                hasNext && !loading
+                  ? "border-slate-800 font-bold hover:shadow-2xl border-2 bg-white cursor-pointer text-slate-700 hover:bg-slate-50"
+                  : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+              }`}
+            aria-label="Next page"
+            title="Next page"
+          >
+            <span className="inline-flex items-center gap-2">
+              Next <FiChevronRight />
+            </span>
+          </button>
+        </div>
+      </div>
 
       {/* Estado de carga inicial */}
-      {loading && baseList.length === 0 && (
+      {loading && pageItems.length === 0 && (
         <div className="py-10">
           <Loading text={"Wait a few seconds..."} />
         </div>
@@ -254,121 +328,34 @@ export default function Home() {
       )}
 
       {/* Resultado */}
-      {!error && displayList.length > 0 && (
-        <>
-          <p className="text-sm text-slate-600">
-            Showing <span className="font-semibold">{displayList.length}</span>{" "}
-            of {sorted.length} character(s)
-            {debounced.trim() && (
-              <>
-                {" "}
-                starting with “
-                <span className="font-mono">{debounced.trim()}</span>”
-              </>
-            )}
-            {(status || species || gender) && (
-              <>
-                {" "}
-                with filters [
-                {status && (
-                  <span>
-                    Status: <b>{status}</b>
-                  </span>
-                )}
-                {status && (species || gender) && " | "}
-                {species && (
-                  <span>
-                    Species: <b>{species}</b>
-                  </span>
-                )}
-                {species && gender && " | "}
-                {gender && (
-                  <span>
-                    Gender: <b>{gender}</b>
-                  </span>
-                )}
-                ]
-              </>
-            )}
-            {onlyFavs && " (only favorites)"}
-          </p>
-
-          {/* Grid/cards con animaciones */}
-          <motion.div
-            layout
-            className="flex flex-wrap justify-center gap-5 w-full"
-            transition={{ layout: { duration: 0.25 } }}
-          >
-            <AnimatePresence mode="popLayout" initial={false}>
-              {displayList.map((c) => (
-                <motion.div
-                  key={`${c.id}-${c.name}`}
-                  layout
-                  variants={itemVariants}
-                  initial="hidden"
-                  animate="show"
-                  exit="exit"
-                >
-                  <CharacterCard c={c} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Controles de paginado con personalidad */}
-          <div className="mt-6 flex w-full items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={onViewLess}
-              disabled={!canViewLess}
-              className={`cursor-pointer select-none rounded-full border px-5 py-2 text-sm font-medium shadow-sm transition
-                ${
-                  canViewLess
-                    ? "border-slate-300 bg-white text-slate-700 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-200"
-                    : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                }`}
-              title="Show fewer"
-              aria-label="Show fewer"
-            >
-              <span className="inline-flex items-center gap-2">
-                <FiChevronUp /> View less
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onViewMore}
-              disabled={!canViewMore || loadingMore}
-              className={`cursor-pointer select-none rounded-full px-5 py-2 text-sm font-medium transition
-                ${
-                  !canViewMore || loadingMore
-                    ? "cursor-not-allowed bg-slate-200 text-slate-500"
-                    : "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                }`}
-              title="Show more"
-              aria-label="Show more"
-            >
-              <span className="inline-flex items-center gap-2">
-                {loadingMore ? (
-                  "Loading…"
-                ) : (
-                  <>
-                    <FiChevronDown /> View more
-                  </>
-                )}
-              </span>
-            </button>
-          </div>
-        </>
+      {!error && filteredSorted.length > 0 && (
+        <motion.div
+          layout
+          className="flex flex-wrap justify-center gap-5 w-full"
+          transition={{ layout: { duration: 0.25 } }}
+        >
+          <AnimatePresence mode="popLayout" initial={false}>
+            {filteredSorted.map((c) => (
+              <motion.div
+                key={`${c.id}-${c.name}`}
+                layout
+                variants={itemVariants}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+              >
+                <CharacterCard c={c} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {/* Vacío */}
-      {!loading && !error && displayList.length === 0 && (
+      {!loading && !error && filteredSorted.length === 0 && (
         <div className="rounded-md w-full border bg-white p-6 text-center">
           <p className="text-slate-600">
-            {onlyFavs
-              ? "No favorite characters match your current search/filters."
-              : "No characters found with current search/filters."}
+            No characters match your current filters on this page.
           </p>
         </div>
       )}
