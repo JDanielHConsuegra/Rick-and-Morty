@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* ---------- Base polish ---------- */
+:root {
+  /* puedes ajustar el acento si quieres */
+  --ring: 210 40% 96%;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  /* fondo con mayor contraste para destacar paneles blancos */
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(221, 206, 70, 0.35), transparent 20%),
+    radial-gradient(800px 400px at 90% 0%, rgba(47, 55, 66, 0.25), transparent 75%),
+    #cbd5e1; /* slate-200 */
+  color: #0a0a0a; /* casi negro para mejor contraste */
+}
+
+/* Selección de texto */
+::selection {
+  background: rgba(148, 163, 184, .25); /* slate-400/25 */
+}
+
+/* Scrollbar (WebKit/Chromium) */
+*::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, .35); /* slate-500/35 */
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, .5);
+}
