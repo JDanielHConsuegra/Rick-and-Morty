@@ -200,7 +200,7 @@ export default function ControlsBar({
   return (
     <div
       className="
-        rounded-xl border border-slate-200 bg-white/80 backdrop-blur
+        rounded-xl border border-blue-900 bg-blue-100/90 backdrop-blur
         p-3 sm:p-4 shadow-sm
       "
     >

@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
-import { FiChevronRight, FiUser } from "react-icons/fi";
+import { FiChevronRight } from "react-icons/fi";
 import { AiFillHeart } from "react-icons/ai";
 import { useFavorites } from "../context/useFavorites.js";
+import { RiAliensFill } from "react-icons/ri";
+import { FaRobot } from "react-icons/fa";
+import { FaPaw, FaUser } from "react-icons/fa";
+import { TbDeviceUnknownFilled } from "react-icons/tb";
 
 export default function CharacterCard({ c }) {
   const { isFavorite } = useFavorites();
@@ -12,7 +16,9 @@ export default function CharacterCard({ c }) {
   return (
     <Link
       to={`/character/${c.id}`}
-      className="group relative block w-40 lg:w-60 overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg"
+      className={`group relative block w-40 lg:w-60 overflow-hidden rounded-2xl border bg-blue-100/90 backdrop-blur transition hover:-translate-y-0.5 shadow-lg ${
+        fav && "ring ring-amber-300"
+      }`}
     >
       {/* Favorito */}
       {fav && (
@@ -36,7 +42,17 @@ export default function CharacterCard({ c }) {
         <div>
           <h3 className="text-sm font-semibold text-slate-900">{c.name}</h3>
           <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-600">
-            <FiUser className="opacity-70" />
+            {c.species === "Human" ? (
+              <FaUser className="opacity-70 text-[14px] text-black" />
+            ) : c.species === "Alien" ? (
+              <RiAliensFill className="opacity-70 text-[14px] text-black" />
+            ) : c.species === "Robot" ? (
+              <FaRobot className="opacity-70 text-[14px] text-black" />
+            ) : c.species === "Animal" ? (
+              <FaPaw className="opacity-70 text-[14px] text-black" />
+            ) : (
+              <TbDeviceUnknownFilled className="opacity-70 text-[14px] text-black" />
+            )}
             {c.species || "Unknown"}
           </p>
         </div>

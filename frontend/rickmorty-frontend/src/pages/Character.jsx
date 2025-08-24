@@ -162,7 +162,7 @@ export default function Character() {
         </div>
 
         {/* Info panel */}
-        <div className="space-y-4 rounded-2xl border bg-white/80 p-4 backdrop-blur">
+        <div className="space-y-4 rounded-2xl border bg-blue-100/90 p-4 backdrop-blur">
           <InfoRow icon={<FiUser />} label="Name" value={c.name} />
           <InfoRow
             icon={statusUI.icon}
@@ -189,7 +189,7 @@ export default function Character() {
       </div>
 
       {/* Comments */}
-      <div className="rounded-2xl border bg-white/80 p-4 backdrop-blur">
+      <div className="rounded-2xl border bg-blue-100/90 p-4 backdrop-blur">
         <Comments characterId={id} />
       </div>
     </section>

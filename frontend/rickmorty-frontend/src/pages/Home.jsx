@@ -148,7 +148,9 @@ export default function Home() {
 
   return (
     <section className="min-h-screen w-full max-w-screen-xl mx-auto flex flex-col items-stretch gap-6">
-      <h2 className="mt-2 text-2xl font-semibold">Characters</h2>
+      <h2 className="bg-gradient-to-r mb-10 lg:mb-16 font-bold text-4xl lg:text-6xl from-blue-800 to-slate-900 bg-clip-text text-transparent">
+        Characters
+      </h2>
 
       {/* Botón de filtros en mobile */}
       <div className="md:hidden">
