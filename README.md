@@ -201,7 +201,9 @@ Use Node scripts instead of bash heredocs; avoid shell-specific operators if you
 
 ## 🗺️ Database ERD
 
-A focused single-table schema optimized for the required filters. See **[`src/docs/ERD.md`](src/docs/ERD.md)** for details.
+A focused single-table schema optimized for the required filters. See **[`/backend/rickmorty-graphql-api
+/src/docs/ERD.md`](/backend/rickmorty-graphql-api
+/src/docs/ERD.md)** for details.
 
 Quick preview:
 
