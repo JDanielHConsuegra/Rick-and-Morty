@@ -191,23 +191,6 @@ A focused single-table schema optimized for the required filters. See **[`/backe
 /src/docs/ERD.md`](/backend/rickmorty-graphql-api
 /src/docs/ERD.md)** for details.
 
-Quick preview:
-
-```mermaid
-erDiagram
-  CHARACTER {
-    INT id PK
-    VARCHAR name
-    VARCHAR status
-    VARCHAR species
-    VARCHAR gender
-    VARCHAR origin
-    VARCHAR image
-    INT apiId
-    TIMESTAMP createdAt
-    TIMESTAMP updatedAt
-  }
-```
 
 
 Happy hacking! 🚀
