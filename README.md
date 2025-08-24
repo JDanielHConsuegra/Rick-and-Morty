@@ -24,16 +24,9 @@ Optional:
 
 ## 2) Backend (GraphQL API)
 
-Repository name (example): `rickmorty-graphql-api`
+Repository name: `rickmorty-graphql-api`
 
-### 2.1. Clone & install
-```bash
-git clone <your-repo-url>/rickmorty-graphql-api.git
-cd rickmorty-graphql-api
-npm i
-```
-
-### 2.2. Environment variables
+### 2.1. Environment variables
 Create `.env` in the backend root based on `.env.example`. Typical local setup (PostgreSQL + Redis):
 
 ```dotenv
@@ -57,7 +50,7 @@ CORS_ORIGIN=http://localhost:5173
 
 > If your DB requires SSL, set `DB_SSL=true`. For managed services, paste their connection strings.
 
-### 2.3. Database create & migrate
+### 2.2. Database create & migrate
 ```bash
 npx sequelize-cli db:create
 npx sequelize-cli db:migrate
@@ -65,7 +58,7 @@ npx sequelize-cli db:migrate
 # npx sequelize-cli db:migrate --config src/db/config.cjs
 ```
 
-### 2.4. Seed data (ALL characters from public API)
+### 2.3. Seed data (ALL characters from public API)
 Run the seed script provided by the repo (one of the following, depending on your `package.json`):
 ```bash
 npm run seed:all
@@ -76,7 +69,7 @@ node scripts/seed-all.mjs
 ```
 The seed should be idempotent (no duplicates if you keep a unique `apiId`).
 
-### 2.5. Start backend
+### 2.4. Start backend
 ```bash
 # dev (nodemon)
 npm run dev
@@ -91,7 +84,7 @@ Endpoints:
 
 If CORS errors appear from the frontend, ensure `CORS_ORIGIN=http://localhost:5173` in `.env`.
 
-### 2.6. (Optional) Redis cache helpers
+### 2.5. (Optional) Redis cache helpers
 ```bash
 npm run cache:clear
 ```
@@ -101,34 +94,27 @@ If you see `ERR wrong number of arguments for 'del' command`, ensure your script
 
 ## 3) Frontend (React 18 + Vite)
 
-Repository name (example): `rickmorty-frontend`
+Repository name: `rickmorty-frontend`
 
-### 3.1. Clone & install
-```bash
-git clone <your-repo-url>/rickmorty-frontend.git
-cd rickmorty-frontend
-npm i
-```
-
-### 3.2. Environment variables
+### 3.1. Environment variables
 Create `.env` in the frontend root:
 ```dotenv
 VITE_API_URL=http://localhost:4000/graphql
 ```
 
-### 3.3. Run dev server
+### 3.2. Run dev server
 ```bash
 npm run dev
 ```
 Vite will show something like `http://localhost:5173`. Make sure backend is running.
 
-### 3.4. Build & preview
+### 3.3. Build & preview
 ```bash
 npm run build
 npm run preview
 ```
 
-### 3.5. Tests (if enabled)
+### 3.4. Tests
 ```bash
 npm run test
 npm run test:watch
