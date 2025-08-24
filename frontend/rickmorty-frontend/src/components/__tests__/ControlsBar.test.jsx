@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { test, vi, expect } from "vitest";
 import ControlsBar from "../ControlsBar.jsx";
@@ -45,6 +45,14 @@ function setup() {
   };
 }
 
+// Pequeño helper para abrir un InlineSelect por su título
+function getSelectToggle(titleText) {
+  const labelEl = screen.getByText(new RegExp(`^${titleText}$`, "i"));
+  const header = labelEl.closest("div"); // cabecera del control (título + botón)
+  expect(header).not.toBeNull();
+  return within(header).getByRole("button");
+}
+
 test("updates search, toggles favorites, changes sort and facets", async () => {
   const u = userEvent.setup();
   const {
@@ -57,27 +65,43 @@ test("updates search, toggles favorites, changes sort and facets", async () => {
   } = setup();
 
   // Escribir en el buscador → debe llamar a onSearchChange
-  const input = screen.getByLabelText(/search characters by name/i);
+  // (el input usa placeholder, no label)
+  const input = screen.getByPlaceholderText(/search characters by name/i);
   await u.type(input, "Ric");
   expect(onSearchChange).toHaveBeenCalled();
 
   // Toggle de favoritos → debe llamar a onOnlyFavsChange(true)
-  const favs = screen.getByLabelText(/show only favorites/i);
+  // (es un botón con el texto "Only favorites")
+  const favs = screen.getByRole("button", { name: /only favorites/i });
   await u.click(favs);
   expect(onOnlyFavsChange).toHaveBeenCalledWith(true);
 
   // Cambiar orden descendente → onSortOrderChange("desc")
-  const sort = screen.getByLabelText(/sort by name/i);
-  await u.selectOptions(sort, "desc");
+  // (InlineSelect basado en botones, no <select>)
+  const sortToggle = getSelectToggle("Sort by name");
+  await u.click(sortToggle);
+  const descOption = await screen.findByRole("button", {
+    name: /^\s*Z\s*→\s*A\s*$/i,
+  });
+  await u.click(descOption);
   expect(onSortOrderChange).toHaveBeenCalledWith("desc");
 
   // Seleccionar opciones de filtros → onStatus/Species/GenderChange
-  await u.selectOptions(screen.getByLabelText(/filter by status/i), "Alive");
+  const statusToggle = getSelectToggle("Status");
+  await u.click(statusToggle);
+  const alive = await screen.findByRole("button", { name: /^Alive$/i });
+  await u.click(alive);
   expect(onStatusChange).toHaveBeenCalledWith("Alive");
 
-  await u.selectOptions(screen.getByLabelText(/filter by species/i), "Human");
+  const speciesToggle = getSelectToggle("Species");
+  await u.click(speciesToggle);
+  const human = await screen.findByRole("button", { name: /^Human$/i });
+  await u.click(human);
   expect(onSpeciesChange).toHaveBeenCalledWith("Human");
 
-  await u.selectOptions(screen.getByLabelText(/filter by gender/i), "Male");
+  const genderToggle = getSelectToggle("Gender");
+  await u.click(genderToggle);
+  const male = await screen.findByRole("button", { name: /^Male$/i });
+  await u.click(male);
   expect(onGenderChange).toHaveBeenCalledWith("Male");
 });
