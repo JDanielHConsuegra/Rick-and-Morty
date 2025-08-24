@@ -197,4 +197,29 @@ Use Node scripts instead of bash heredocs; avoid shell-specific operators if you
 - Health: `http://localhost:4000/health`
 - Frontend (Vite): `http://localhost:5173`
 
+---
+
+## 🗺️ Database ERD
+
+A focused single-table schema optimized for the required filters. See **[`src/docs/ERD.md`](src/docs/ERD.md)** for details.
+
+Quick preview:
+
+```mermaid
+erDiagram
+  CHARACTER {
+    INT id PK
+    VARCHAR name
+    VARCHAR status
+    VARCHAR species
+    VARCHAR gender
+    VARCHAR origin
+    VARCHAR image
+    INT apiId
+    TIMESTAMP createdAt
+    TIMESTAMP updatedAt
+  }
+```
+
+
 Happy hacking! 🚀
